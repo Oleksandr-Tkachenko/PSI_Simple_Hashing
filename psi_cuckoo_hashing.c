@@ -10,21 +10,10 @@ void psi_cuckoo_hashing(PSI_CUCKOO_HASHING_CTX *ctx) {
     snprintf(ctx->path_stash, 128, "%sstash", adr);
     snprintf(ctx->path_dest, 128, "%stable", adr);
 
-    FILE * f_source = fopen(ctx->path_source, "rb");
-    if (f_source == NULL) {
-        printf("Bad source filename %s\n", ctx->path_source);
-        exit(EXIT_FAILURE);
-    }
-    FILE * f_stash = fopen(ctx->path_stash, "ab");
-    if (f_stash == NULL) {
-        printf("Error opening file for stash %s\n", ctx->path_stash);
-        exit(EXIT_FAILURE);
-    }
-    FILE * f_dest = fopen(ctx->path_dest, "ab");
-    if (f_dest == NULL) {
-        printf("Error opening file for table %s\n", ctx->path_dest);
-        exit(EXIT_FAILURE);
-    }
+    FILE * f_source = psi_try_fopen(ctx->path_source, "rb");
+    FILE * f_stash = psi_try_fopen(ctx->path_stash, "ab");
+    FILE * f_dest = psi_try_fopen(ctx->path_dest, "ab");
+    
     ctx->size_source = fsize(ctx->path_source);
     ctx->size_table = (ctx->size_source / 16)*19 * ctx->d_mult_size_table;
     ctx->divisor = (0xFFFFFFFFFFFFFFFF / ctx-> size_table) * 19;
@@ -37,11 +26,7 @@ void psi_cuckoo_hashing(PSI_CUCKOO_HASHING_CTX *ctx) {
         i += 16;
     }
     fclose(f_dest);
-    f_dest = fopen(ctx->path_dest, "rb+");
-    if (f_dest == NULL) {
-        printf("Error opening file for table %s\n", ctx->path_dest);
-        exit(EXIT_FAILURE);
-    }
+    f_dest = psi_try_fopen(ctx->path_dest, "rb+");
     ctx->l = psi_cuckoo_alloc_list();
     psi_cuckoo_list_iterate(ctx->l, f_source, f_dest, f_stash, ctx);
 
@@ -98,11 +83,7 @@ void psi_cuckoo_list_insert_sorted(PSI_Cuckoo_list * l, PSI_Cuckoo_element * e) 
     else if (l->root->hash_val >= e->hash_val) {
         e->next = l->root;
         l->root->prev = e;
-        l->root = e; /*
-        PSI_Cuckoo_element * next = l->root;
         l->root = e;
-        e->next = next;
-        next->prev = e;*/
     } else {
         PSI_Cuckoo_element * tmp = l->root;
         while (!psi_cuckoo_list_try_to_insert(tmp, e)) {

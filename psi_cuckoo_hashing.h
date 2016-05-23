@@ -29,8 +29,12 @@ extern "C" {
     void psi_cuckoo_list_remove_node(PSI_Cuckoo_list * l, PSI_Cuckoo_element * e);
     void psi_cuckoo_save(PSI_Cuckoo_list * l, PSI_Cuckoo_element * e, FILE * f_dest, FILE * f_stash, PSI_CUCKOO_HASHING_CTX *ctx);
     void psi_cuckoo_hashing(PSI_CUCKOO_HASHING_CTX *ctx);
+    
+    /*Checks if cuckoo element is empty*/
     gboolean psi_cuckoo_is_empty(uint8_t * buf);
     static void show_settings(PSI_CUCKOO_HASHING_CTX *ctx);
+    
+    /*Interprets 2 byte recursive depth limiter*/
     static gboolean interpret_limiter(uint8_t * a, uint8_t * b, uint16_t limit);
     static void psi_cuckoo_move_to_stash(PSI_Cuckoo_list *l, PSI_Cuckoo_element * e, FILE * f_stash);
     static gboolean psi_cuckoo_read(FILE * f, uint8_t * buffer);
