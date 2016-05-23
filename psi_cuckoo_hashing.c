@@ -163,6 +163,7 @@ static void psi_cuckoo_tree_save_all_once(PSI_CUCKOO_HASHING_CTX *ctx) {
         if (g_tree_lookup(ctx->tree, e->hash_val)) i++;
         else {
             g_tree_insert(ctx->tree, e->hash_val, e->buffer);
+            free(e);
             ctx->wait_list = g_slist_delete_link(ctx->wait_list, g_slist_nth(ctx->wait_list, i));
         }
     }
