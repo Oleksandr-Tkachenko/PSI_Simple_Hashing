@@ -24,7 +24,7 @@ CLEAN_SUBPROJECTS=${CLEAN_SUBPROJECTS_${SUBPROJECTS}}
 
 
 # Project Name
-PROJECTNAME=PSI_Simple_hashing
+PROJECTNAME=PSI_Simple_Hashing
 
 # Active Configuration
 DEFAULTCONF=Debug

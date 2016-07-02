@@ -14,6 +14,8 @@
 #include "psi_hashing.h"
 #include "psi_structures.h"
 
+#define LAST_ELEM_FLAG 0x80
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -28,6 +30,7 @@ extern "C" {
     static void save_buffer(PSI_SIMPLE_HASHING_CTX * ctx, uint8_t ** buf, size_t n);
     static void add_to_bucket(PSI_SIMPLE_HASHING_CTX * ctx, PSI_Queue * q, uint8_t * buf, uint8_t hash_n, uint64_t * bucket);
     static void save_all_buckets(PSI_SIMPLE_HASHING_CTX * ctx);
+    static void psi_sh_create_table(PSI_SIMPLE_HASHING_CTX * ctx);
 
 #ifdef __cplusplus
 }

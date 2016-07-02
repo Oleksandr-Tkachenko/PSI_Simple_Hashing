@@ -6,6 +6,8 @@ void psi_simple_hashing(PSI_SIMPLE_HASHING_CTX * ctx) {
     show_settings(ctx);
 
     handle_input(ctx);
+    psi_sh_create_table(ctx);
+
     psi_sh_free_queues(ctx);
 }
 
@@ -15,6 +17,7 @@ static void show_settings(PSI_SIMPLE_HASHING_CTX *ctx) {
     printf("Buckets path : %s\n", ctx->path_buckets);
     printf("Queues buffer size : %zu\n", ctx->queue_buffer_size);
     printf("Source size : %zu\n", ctx->size_source);
+    printf("Table size : %f\n", ctx->table_size);
     printf("Seeds :\n");
     for (uint8_t i = 0; i < ctx->hash_n; i++) {
         printf("%02x%02x%02x%02x%02x%02x%02x%02x",
@@ -134,4 +137,96 @@ static void add_to_bucket(PSI_SIMPLE_HASHING_CTX * ctx, PSI_Queue * q, uint8_t *
 static void save_all_buckets(PSI_SIMPLE_HASHING_CTX * ctx) {
     for (uint64_t i = 0; i < ctx->bucket_n; i++)
         save_bucket(ctx, &i);
+}
+
+static void psi_sh_create_table(PSI_SIMPLE_HASHING_CTX * ctx) {
+    uint8_t buf[17 * 1000];
+    int read, counter = 0, counter_result = -1;
+    uint64_t pointer, table_divisor = (0xFFFFFFFFFFFFFFFF /
+            (pow(10, ctx->element_pow) * ctx->table_size));
+    char path_buf[128], remove_buf[150], path_sh_result[128];
+
+    FILE * f_result = psi_try_fopen(path_sh_result, "ab");
+    size_t l_size = (1 + pow(10, ctx->element_pow)) / ctx->bucket_n;
+    GList * lists[l_size];
+    psi_sh_null_lists(lists, l_size);
+
+    while (counter < ctx->bucket_n) {
+        if (counter == 0 || (counter + 1) % (ctx->bucket_n / 4) == 0) {
+            strncpy(path_buf, ctx->path_buckets, 110);
+            snprintf(path_buf + strlen(path_buf), 16, "result%d", counter_result);
+            fclose(f_result);
+            counter_result++;
+
+        }
+        strncpy(path_buf, ctx->path_buckets, 110);
+        snprintf(path_buf + strlen(path_buf), 16, "%d", counter);
+        if (fsize(path_buf) == 0) {
+            counter++;
+            continue;
+        }
+        FILE * f = psi_try_fopen(ctx->path_buckets, "rb");
+        while (read = psi_sh_read_from_bucket(f, buf) > 0) {
+            if (read == 0)
+                break;
+            for (size_t i = 0; i < read; i++) {
+                uint8_t * elem = (uint8_t*) malloc(17 * sizeof*elem);
+                psi_get_64bit_sha256_with_seed(ctx->seed[elem[16]], elem, &pointer);
+                pointer /= table_divisor;
+                if (pointer < counter * table_divisor ||
+                        pointer > (counter + 1) * table_divisor)
+                    printf("Error assigning element\n");
+
+                pointer %= l_size;
+                psi_sh_save_elem_to_list(lists[pointer], elem);
+            }
+        }
+        counter++;
+        snprintf(remove_buf, 149, "rm %s", path_buf);
+        if (remove(remove_buf))
+            printf("Error deleting bucket file\n");
+        psi_sh_save_lists(lists, f_result, l_size);
+        psi_sh_clear_lists(lists, l_size);
+        psi_sh_null_lists(lists, l_size);
+    }
+    printf("PSI Simple Hashing : Done\n");
+}
+
+static int psi_sh_read_from_bucket(FILE * f, uint8_t buf[]) {
+    return fread(buf, 16, 1000, f);
+}
+
+static void psi_sh_save_elem_to_list(GList * l, uint8_t * elem) {
+    g_list_append(l, elem);
+}
+
+static void psi_sh_save_lists(GList ** lists, FILE * f, size_t l_size) {
+    for (size_t i = 0; i < l_size; i++) {
+        if (lists[i] == NULL) {
+            lists[i] = psi_sh_add_empty(lists[i]);
+        }
+        GSList * last = g_list_last(lists[i]);
+        ((uint8_t*) last->data)[16] | LAST_ELEM_FLAG;
+        g_list_foreach(lists[i], psi_sh_save_elem_to_res, f);
+    }
+}
+
+static void psi_sh_clear_lists(GList ** lists, size_t l_size) {
+    for (size_t i = 0; i < l_size; i++)
+        g_list_remove_all(lists[i], free);
+}
+
+static void psi_sh_null_lists(GList ** lists, size_t l_size) {
+    for (size_t i = 0; i < l_size; i++)
+        lists[i] = NULL;
+}
+
+static void psi_sh_save_elem_to_res(gpointer elem, gpointer f) {
+    if (write((uint8_t*) elem, 17, 1, (FILE*) f) < 1)
+        printf("Error writing result to file\n");
+}
+
+static GList * psi_sh_add_empty(GList * l) {
+    uint8_t * elem = (uint8_t*) calloc(17 * sizeof*elem, 1);
+    g_list_append(l, elem);
 }

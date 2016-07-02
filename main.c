@@ -27,7 +27,7 @@ int parse_argv(int argc, char** argv, PSI_SIMPLE_HASHING_CTX* ctx) {
     int index, c;
     opterr = 0;
     ctx->hash_n = 0;
-    while ((c = getopt(argc, argv, "1:2:3:p:e:b:q:s:r:i:t:")) != -1)
+    while ((c = getopt(argc, argv, "1:2:3:p:e:b:q:s:r:i:t:d:")) != -1)
         switch (c) {
             case '1':
                 atob(optarg, ctx->seed[ctx->hash_n]);
@@ -40,6 +40,9 @@ int parse_argv(int argc, char** argv, PSI_SIMPLE_HASHING_CTX* ctx) {
             case '3':
                 atob(optarg, ctx->seed[ctx->hash_n]);
                 ctx->hash_n++;
+                break;
+            case 'd':
+                ctx->table_size = atof(optarg);
                 break;
             case 'i':
                 ctx->read_buffer_size = atoi(optarg);
