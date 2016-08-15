@@ -1,5 +1,0 @@
-psi-simple-hashing
-*.o
-.git*
-.dep.inc
-nbproject/*
