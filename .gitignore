@@ -1,5 +1,5 @@
 psi-simple-hashing
-nbproject
-.git
-.dep.inc
 *.o
+.git*
+.dep.inc
+nbproject/*
