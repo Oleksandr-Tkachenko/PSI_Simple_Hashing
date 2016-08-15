@@ -1,2 +1,5 @@
-/build/
-/dist/
+psi-simple-hashing
+nbproject
+.git
+.dep.inc
+*.o

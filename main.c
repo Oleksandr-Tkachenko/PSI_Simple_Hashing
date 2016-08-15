@@ -17,6 +17,10 @@
 int parse_argv(int argc, char** argv, PSI_SIMPLE_HASHING_CTX* ctx);
 
 int main(int argc, char** argv) {
+if(argc==1){
+printf("PSI Simple Hashing\n");
+return(EXIT_FAILURE);
+}
     PSI_SIMPLE_HASHING_CTX ctx[1];
     parse_argv(argc, argv, ctx);
     psi_simple_hashing(ctx);
@@ -82,4 +86,6 @@ int parse_argv(int argc, char** argv, PSI_SIMPLE_HASHING_CTX* ctx) {
 
     for (index = optind; index < argc; index++)
         printf("Non-option argument %s\n", argv[index]);
+
+return(EXIT_SUCCESS);
 }
