@@ -18,6 +18,10 @@
 int parse_argv(int argc, char** argv, PSI_CUCKOO_HASHING_CTX* ctx);
 
 int main(int argc, char** argv) {
+if(argc==1){
+printf("PSI Cuckoo Hashing\n");
+return(EXIT_FAILURE);
+}
     PSI_CUCKOO_HASHING_CTX ctx[1];
     parse_argv(argc, argv, ctx);
     psi_cuckoo_hashing(ctx);
@@ -28,7 +32,7 @@ int parse_argv(int argc, char** argv, PSI_CUCKOO_HASHING_CTX* ctx) {
     int index, c;
     opterr = 0;
     ctx->hash_n = 0;
-    while ((c = getopt(argc, argv, "1:2:p:e:b:s:l:t:g:r:")) != -1)
+    while ((c = getopt(argc, argv, "1:2:3:p:e:b:s:l:t:g:r:")) != -1)
         switch (c) {
             case '1':
                 atob(optarg, ctx->seed[ctx->hash_n]);
@@ -74,5 +78,7 @@ int parse_argv(int argc, char** argv, PSI_CUCKOO_HASHING_CTX* ctx) {
 
     for (index = optind; index < argc; index++)
         printf("Non-option argument %s\n", argv[index]);
+
+	return(EXIT_SUCCESS);
 }
 

@@ -1,5 +1,23 @@
 #include "psi_cuckoo_hashing.h"
 
+static void psi_cuckoo_tree_iterate(PSI_CUCKOO_HASHING_CTX *ctx);
+    
+    /*Checks if cuckoo element is empty*/
+    static gboolean psi_cuckoo_is_empty(uint8_t * buf);
+    static void self_configuration(PSI_CUCKOO_HASHING_CTX *ctx);
+    static void show_settings(PSI_CUCKOO_HASHING_CTX *ctx);
+
+    /*Interprets 2 byte recursive depth limiter*/
+    static gboolean interpret_limiter(uint8_t * a, uint8_t * b, uint16_t limit);
+    static gboolean psi_cuckoo_read(FILE * f, uint8_t * buffer);
+
+    static void psi_cuckoo_tree_move_to_stash(uint8_t * elem, FILE * f);
+    static gboolean psi_cuckoo_tree_save_elem(gpointer hash, gpointer elem, gpointer ctx);
+    static void psi_cuckoo_tree_save_all_once(PSI_CUCKOO_HASHING_CTX *ctx);
+    static void psi_cuckoo_tree_save_all(FILE * f_dest, FILE * f_stash, PSI_CUCKOO_HASHING_CTX *ctx);
+
+    static gint psi_cuckoo_tree_compare(gconstpointer a, gconstpointer b, gpointer user_data);
+
 void psi_cuckoo_hashing(PSI_CUCKOO_HASHING_CTX *ctx) {
     self_configuration(ctx);
     show_settings(ctx);
@@ -75,6 +93,7 @@ static void show_settings(PSI_CUCKOO_HASHING_CTX *ctx) {
     printf("Size of the table : %zu(%zu * 19/16 * %0.1f) Bytes\n", ctx->size_table, ctx->size_source, ctx->d_mult_size_table);
     printf("Read buffer size : %zu KB (%zu elements)\n", (size_t) (ctx->read_buffer_size * sizeof (PSI_Cuckoo_list_element) / 1000), ctx->read_buffer_size);
     printf("Recursive deepness limit : %zu\n", ctx->rec_limit);
+    printf("Seed count : %u\n", ctx->hash_n);
     printf("Seeds :\n");
     for (uint8_t i = 0; i < ctx->hash_n; i++) {
         printf("%02x%02x%02x%02x%02x%02x%02x%02x",
@@ -159,7 +178,7 @@ static void psi_cuckoo_tree_save_all_once(PSI_CUCKOO_HASHING_CTX *ctx) {
     size_t i = 0;
     while (ctx->wait_list != NULL && g_tree_nnodes(ctx->tree) < ctx->read_buffer_size) {
         PSI_Cuckoo_wle * e = g_slist_nth_data(ctx->wait_list, i);
-        if (e == NULL) break;
+        if (e == NULL || e == (void*)0x4444333322221111) break;
         if (g_tree_lookup(ctx->tree, e->hash_val)) i++;
         else {
             g_tree_insert(ctx->tree, e->hash_val, e->buffer);
