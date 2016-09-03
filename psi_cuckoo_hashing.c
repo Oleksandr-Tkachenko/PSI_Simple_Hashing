@@ -1,22 +1,22 @@
 #include "psi_cuckoo_hashing.h"
 
 static void psi_cuckoo_tree_iterate(PSI_CUCKOO_HASHING_CTX *ctx);
-    
-    /*Checks if cuckoo element is empty*/
-    static gboolean psi_cuckoo_is_empty(uint8_t * buf);
-    static void self_configuration(PSI_CUCKOO_HASHING_CTX *ctx);
-    static void show_settings(PSI_CUCKOO_HASHING_CTX *ctx);
 
-    /*Interprets 2 byte recursive depth limiter*/
-    static gboolean interpret_limiter(uint8_t * a, uint8_t * b, uint16_t limit);
-    static gboolean psi_cuckoo_read(FILE * f, uint8_t * buffer);
+/*Checks if cuckoo element is empty*/
+static gboolean psi_cuckoo_is_empty(uint8_t * buf);
+static void self_configuration(PSI_CUCKOO_HASHING_CTX *ctx);
+static void show_settings(PSI_CUCKOO_HASHING_CTX *ctx);
 
-    static void psi_cuckoo_tree_move_to_stash(uint8_t * elem, FILE * f);
-    static gboolean psi_cuckoo_tree_save_elem(gpointer hash, gpointer elem, gpointer ctx);
-    static void psi_cuckoo_tree_save_all_once(PSI_CUCKOO_HASHING_CTX *ctx);
-    static void psi_cuckoo_tree_save_all(FILE * f_dest, FILE * f_stash, PSI_CUCKOO_HASHING_CTX *ctx);
+/*Interprets 2 byte recursive depth limiter*/
+static gboolean interpret_limiter(uint8_t * a, uint8_t * b, uint16_t limit);
+static gboolean psi_cuckoo_read(FILE * f, uint8_t * buffer);
 
-    static gint psi_cuckoo_tree_compare(gconstpointer a, gconstpointer b, gpointer user_data);
+static void psi_cuckoo_tree_move_to_stash(uint8_t * elem, FILE * f);
+static gboolean psi_cuckoo_tree_save_elem(gpointer hash, gpointer elem, gpointer ctx);
+static void psi_cuckoo_tree_save_all_once(PSI_CUCKOO_HASHING_CTX *ctx);
+static void psi_cuckoo_tree_save_all(FILE * f_dest, FILE * f_stash, PSI_CUCKOO_HASHING_CTX *ctx);
+
+static gint psi_cuckoo_tree_compare(gconstpointer a, gconstpointer b, gpointer user_data);
 
 void psi_cuckoo_hashing(PSI_CUCKOO_HASHING_CTX *ctx) {
     self_configuration(ctx);
@@ -59,21 +59,18 @@ static gboolean psi_cuckoo_is_empty(uint8_t * buf) {
 }
 
 static void self_configuration(PSI_CUCKOO_HASHING_CTX *ctx) {
-    char adr[64];
-    snprintf(adr, 32, "%d", (int) pow(10, ctx->element_pow));
-    strncat(ctx->path_source, adr, 32);
-
-    psi_mkdir(ctx->path_dest);
-    strncpy(adr, ctx->path_dest, 64);
-    snprintf(ctx->path_stash, 128, "%sstash", adr);
-    snprintf(ctx->path_dest, 128, "%stable", adr);
+    snprintf(ctx->path_stash, 128, "%s_stash", ctx->path_dest);
 
     ctx->f_source = psi_try_fopen(ctx->path_source, "rb");
-    ctx->f_stash = psi_try_fopen(ctx->path_stash, "ab");
-    ctx->f_dest = psi_try_fopen(ctx->path_dest, "ab");
+    ctx->f_stash = psi_try_fopen(ctx->path_stash, "wb");
+    ctx->f_dest = psi_try_fopen(ctx->path_dest, "wb");
 
     ctx->size_source = fsize(ctx->path_source);
-    ctx->size_table = (ctx->size_source / 16)*19 * ctx->d_mult_size_table;
+    if (ctx->fixed_table_size)
+        ctx->size_table = ctx->fixed_table_size * 19;
+    else
+        ctx->size_table = (ctx->size_source / 16)*19 * ctx->d_mult_size_table;
+
     ctx->divisor = (0xFFFFFFFFFFFFFFFF / ctx-> size_table) * 19;
 
     uint8_t zero_buf[19] = {0};
@@ -90,7 +87,10 @@ static void show_settings(PSI_CUCKOO_HASHING_CTX *ctx) {
     printf("Source path : %s\n", ctx->path_source);
     printf("Destination path : %s\n", ctx->path_dest);
     printf("Stash path : %s\n", ctx->path_stash);
-    printf("Size of the table : %zu(%zu * 19/16 * %0.1f) Bytes\n", ctx->size_table, ctx->size_source, ctx->d_mult_size_table);
+    if (ctx->fixed_table_size)
+        printf("Size of the table : %zu(%zu * 19) Bytes\n", ctx->fixed_table_size * 19, ctx->fixed_table_size);
+    else
+        printf("Size of the table : %zu(%zu * 19/16 * %0.1f) Bytes\n", ctx->size_table, ctx->size_source, ctx->d_mult_size_table);
     printf("Read buffer size : %zu KB (%zu elements)\n", (size_t) (ctx->read_buffer_size * sizeof (PSI_Cuckoo_list_element) / 1000), ctx->read_buffer_size);
     printf("Recursive deepness limit : %zu\n", ctx->rec_limit);
     printf("Seed count : %u\n", ctx->hash_n);
@@ -105,6 +105,11 @@ static void show_settings(PSI_CUCKOO_HASHING_CTX *ctx) {
                 ctx->seed[i][8], ctx->seed[i][9], ctx->seed[i][10],
                 ctx->seed[i][11], ctx->seed[i][12], ctx->seed[i][13],
                 ctx->seed[i][14], ctx->seed[i][15]);
+    }
+
+    if (ctx->fixed_table_size == 0 && ctx->d_mult_size_table == 0) {
+        perror("There is no defined table size");
+        exit(EXIT_FAILURE);
     }
 }
 
@@ -178,7 +183,7 @@ static void psi_cuckoo_tree_save_all_once(PSI_CUCKOO_HASHING_CTX *ctx) {
     size_t i = 0;
     while (ctx->wait_list != NULL && g_tree_nnodes(ctx->tree) < ctx->read_buffer_size) {
         PSI_Cuckoo_wle * e = g_slist_nth_data(ctx->wait_list, i);
-        if (e == NULL || e == (void*)0x4444333322221111) break;
+        if (e == NULL || e == (void*) 0x4444333322221111) break;
         if (g_tree_lookup(ctx->tree, e->hash_val)) i++;
         else {
             g_tree_insert(ctx->tree, e->hash_val, e->buffer);

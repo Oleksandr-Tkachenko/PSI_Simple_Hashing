@@ -18,11 +18,12 @@
 int parse_argv(int argc, char** argv, PSI_CUCKOO_HASHING_CTX* ctx);
 
 int main(int argc, char** argv) {
-if(argc==1){
-printf("PSI Cuckoo Hashing\n");
-return(EXIT_FAILURE);
-}
+    if (argc == 1) {
+        printf("PSI Cuckoo Hashing\n");
+        return (EXIT_FAILURE);
+    }
     PSI_CUCKOO_HASHING_CTX ctx[1];
+    ctx->fixed_table_size = 0;
     parse_argv(argc, argv, ctx);
     psi_cuckoo_hashing(ctx);
     return (EXIT_SUCCESS);
@@ -32,7 +33,7 @@ int parse_argv(int argc, char** argv, PSI_CUCKOO_HASHING_CTX* ctx) {
     int index, c;
     opterr = 0;
     ctx->hash_n = 0;
-    while ((c = getopt(argc, argv, "1:2:3:p:e:b:s:l:t:g:r:")) != -1)
+    while ((c = getopt(argc, argv, "1:2:3:a:b:s:l:p:r:m:f:")) != -1)
         switch (c) {
             case '1':
                 atob(optarg, ctx->seed[ctx->hash_n]);
@@ -49,20 +50,20 @@ int parse_argv(int argc, char** argv, PSI_CUCKOO_HASHING_CTX* ctx) {
             case 'l':
                 ctx->rec_limit = atoi(optarg);
                 break;
-            case 'b':
+            case 'm':
                 ctx->d_mult_size_table = atof(optarg);
                 break;
-            case 'e':
-                ctx->element_pow = atoi(optarg);
-                break;
-            case 'p':
+            case 'a':
                 strncpy(ctx->path_source, optarg, 128);
                 break;
             case 'r':
                 ctx->read_buffer_size = atoi(optarg);
                 break;
-            case 't':
+            case 'p':
                 strncpy(ctx->path_dest, optarg, 128);
+                break;
+            case'f':
+                ctx->fixed_table_size = atoi(optarg);
                 break;
             case '?':
                 if (isprint(optopt))
@@ -79,6 +80,6 @@ int parse_argv(int argc, char** argv, PSI_CUCKOO_HASHING_CTX* ctx) {
     for (index = optind; index < argc; index++)
         printf("Non-option argument %s\n", argv[index]);
 
-	return(EXIT_SUCCESS);
+    return (EXIT_SUCCESS);
 }
 
