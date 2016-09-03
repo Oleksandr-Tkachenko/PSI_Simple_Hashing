@@ -24,7 +24,6 @@ extern "C" {
     void psi_simple_hashing(PSI_SIMPLE_HASHING_CTX * ctx);
     PSI_Queue ** psi_sh_allocate_queues(PSI_SIMPLE_HASHING_CTX * ctx);
     void psi_sh_free_queues(PSI_SIMPLE_HASHING_CTX * ctx);
-    void parse_paths(PSI_SIMPLE_HASHING_CTX * ctx);
     
 #ifdef __cplusplus
 }

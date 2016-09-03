@@ -17,10 +17,10 @@
 int parse_argv(int argc, char** argv, PSI_SIMPLE_HASHING_CTX* ctx);
 
 int main(int argc, char** argv) {
-if(argc==1){
-printf("PSI Simple Hashing\n");
-return(EXIT_FAILURE);
-}
+    if (argc == 1) {
+        printf("PSI Simple Hashing\n");
+        return (EXIT_FAILURE);
+    }
     PSI_SIMPLE_HASHING_CTX ctx[1];
     parse_argv(argc, argv, ctx);
     psi_simple_hashing(ctx);
@@ -31,7 +31,7 @@ int parse_argv(int argc, char** argv, PSI_SIMPLE_HASHING_CTX* ctx) {
     int index, c;
     opterr = 0;
     ctx->hash_n = 0;
-    while ((c = getopt(argc, argv, "1:2:3:p:e:b:q:s:r:i:t:d:")) != -1)
+    while ((c = getopt(argc, argv, "1:2:3:p:b:q:s:i:t:d:f:z:")) != -1)
         switch (c) {
             case '1':
                 atob(optarg, ctx->seed[ctx->hash_n]);
@@ -51,11 +51,8 @@ int parse_argv(int argc, char** argv, PSI_SIMPLE_HASHING_CTX* ctx) {
             case 'i':
                 ctx->read_buffer_size = atoi(optarg);
                 break;
-            case 'e':
-                ctx->element_pow = atoi(optarg);
-                break;
             case 'p':
-                strncpy(ctx->path_root, optarg, 128);
+                strncpy(ctx->path_source, optarg, 128);
                 break;
             case 'b':
                 ctx->bucket_n = atoi(optarg);
@@ -69,8 +66,11 @@ int parse_argv(int argc, char** argv, PSI_SIMPLE_HASHING_CTX* ctx) {
             case 't':
                 ctx->threads = atoi(optarg);
                 break;
-            case 'r':
-                strncpy(ctx->path_source, optarg, 128);
+            case 'f':
+                ctx->fixed_table_size = atoi(optarg);
+                break;
+            case 'z':
+                strncpy(ctx->path_result, optarg, 128);
                 break;
             case '?':
                 if (isprint(optopt))
@@ -87,5 +87,5 @@ int parse_argv(int argc, char** argv, PSI_SIMPLE_HASHING_CTX* ctx) {
     for (index = optind; index < argc; index++)
         printf("Non-option argument %s\n", argv[index]);
 
-return(EXIT_SUCCESS);
+    return (EXIT_SUCCESS);
 }
