@@ -16,9 +16,7 @@ sudo make remove
 ```
 ---
 ###Dependencies:<br />
-```text
-libglib2.0-dev, _lpsi-util_, libssl-dev
-```
+<pre>libglib2.0-dev, _lpsi-util_, libssl-dev</pre>
 ---
 
 ###Usage:
