@@ -54,5 +54,5 @@ number of elements by set value
 * -z _path_result_ Path to the output file
 * -r _1_ Reduction of elements 16 to 10 bytes. Bin flag is not removed, so +1 byte.
 
-
+---
 http://encrypto.de
