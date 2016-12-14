@@ -14,6 +14,7 @@ static void psi_sh_clear_lists(GList ** lists, size_t l_size);
 static void psi_sh_null_lists(GList ** lists, size_t l_size);
 static void psi_sh_save_elem_to_res(gpointer elem, gpointer f);
 static GList * psi_sh_add_empty(GList * l);
+static void psi_sh_reduction(PSI_SIMPLE_HASHING_CTX *ctx);
 
 void psi_simple_hashing(PSI_SIMPLE_HASHING_CTX * ctx) {
     show_settings(ctx);
@@ -21,6 +22,8 @@ void psi_simple_hashing(PSI_SIMPLE_HASHING_CTX * ctx) {
     handle_input(ctx);
     psi_sh_free_queues(ctx);
     psi_sh_create_table(ctx);
+    if (ctx->reduction)
+        psi_sh_reduction(ctx);
 }
 
 static void show_settings(PSI_SIMPLE_HASHING_CTX *ctx) {
@@ -89,14 +92,14 @@ static void handle_input(PSI_SIMPLE_HASHING_CTX * ctx) {
     for (size_t j = 0; j < ctx->read_buffer_size; j++)
         buf[j] = (uint8_t*) malloc(17);
 
-    for (size_t i = 0; i < ctx->read_buffer_size; i++) {
+    for (int64_t i = 0; i < ctx->read_buffer_size; i++) {
         if (fread(buf[i], 16, 1, f_source) < 1) {
             save_buffer(ctx, buf, i);
             save_all_buckets(ctx);
             break;
         } else if (i == ctx->read_buffer_size - 1) {
-            save_buffer(ctx, buf, i);
-            i = 0;
+            save_buffer(ctx, buf, i + 1);
+            i = -1;
         }
     }
     for (size_t i = 0; i < ctx->read_buffer_size; i++)
@@ -121,28 +124,28 @@ static void save_bucket(PSI_SIMPLE_HASHING_CTX * ctx, uint64_t * n) {
 static void save_buffer(PSI_SIMPLE_HASHING_CTX * ctx, uint8_t ** buf, size_t n) {
 #pragma omp parallel for shared(n, buf, ctx) num_threads(ctx->threads)
     for (size_t i = 0; i < n; i++) {
-        uint64_t bucket;
+        uint64_t bucket = 0;
         for (uint8_t j = 0; j < ctx->hash_n; j++) {
-            psi_get_64bit_sha256_with_seed(ctx->seed[j], buf[i], &bucket);
+            psi_get_64bit_sha256_with_seed(ctx->seed[j], buf[i], &bucket, 16);
             bucket /= ctx->divisor;
             add_to_bucket(ctx, ctx->queues[bucket], buf[i], j, &bucket);
         }
     }
 }
 
-static void add_to_bucket(PSI_SIMPLE_HASHING_CTX * ctx, PSI_Queue * q, uint8_t * buf, uint8_t hash_n, uint64_t * bucket) {
-    while (q->counter == ctx->queue_buffer_size);
+static void add_to_bucket(PSI_SIMPLE_HASHING_CTX * ctx, PSI_Queue * q,
+        uint8_t * buf, uint8_t hash_n, uint64_t * bucket) {
+    while (q->counter == ctx->queue_buffer_size - 1);
 #pragma omp critical
     {
-        if (q->counter > ctx->queue_buffer_size)
+        if (q->counter > ctx->queue_buffer_size - 1)
             printf("Queue counter is out of bounds\n");
-
         memcpy(q->buffer[q->counter], buf, 16);
         q->buffer[q->counter][16] = hash_n;
         q->counter++;
-        if (q->counter == ctx->queue_buffer_size) {
+        if (q->counter == ctx->queue_buffer_size - 1) {
             save_bucket(ctx, bucket);
-        } else if (q->counter > ctx->queue_buffer_size)
+        } else if (q->counter > ctx->queue_buffer_size - 1)
             printf("Queue counter is out of bounds\n");
     }
 }
@@ -155,7 +158,7 @@ static void save_all_buckets(PSI_SIMPLE_HASHING_CTX * ctx) {
 static void psi_sh_create_table(PSI_SIMPLE_HASHING_CTX * ctx) {
     uint8_t buf[17 * READ_BUF_SIZE];
     size_t read;
-    int counter = 0, counter_result = -1;
+    int counter = 0;
     uint64_t table_divisor;
     size_t abs_elem_n = ctx->size_source / 16;
     size_t abs_table_size = 0;
@@ -168,22 +171,15 @@ static void psi_sh_create_table(PSI_SIMPLE_HASHING_CTX * ctx) {
                 (ctx->size_source / 16) * ctx->table_size));
         abs_table_size = (ctx->table_size * abs_elem_n);
     }
-    char path_buf[128], remove_buf[150], path_sh_result[128];
+    char path_buf[128], remove_buf[150];
     FILE * f_result = NULL;
     GList ** lists;
     size_t l_size = abs_table_size / ctx->bucket_n;
+    f_result = psi_try_fopen(ctx->path_result, "wb");
 
     while (counter < ctx->bucket_n) {
         lists = (GList**) malloc((sizeof*lists) * l_size);
         psi_sh_null_lists(lists, l_size);
-        if (counter == 0 || counter % (ctx->bucket_n / 4) == 0) {
-            counter_result++;
-            strncpy(path_sh_result, ctx->path_result, 110);
-            snprintf(path_sh_result + strlen(path_sh_result), 16, "_result%d", counter_result);
-            if (f_result != NULL)
-                fclose(f_result);
-            f_result = psi_try_fopen(path_sh_result, "wb");
-        }
         strncpy(path_buf, ctx->path_buckets, 110);
         snprintf(path_buf + strlen(path_buf), 16, "%d", counter);
         if (fsize(path_buf) == 0) {
@@ -200,7 +196,7 @@ static void psi_sh_create_table(PSI_SIMPLE_HASHING_CTX * ctx) {
                 uint64_t pointer;
                 uint8_t * elem = (uint8_t*) malloc(17 * sizeof*elem);
                 memcpy(elem, buf + (i * 17), 17);
-                psi_get_64bit_sha256_with_seed(ctx->seed[elem[16]], elem, &pointer);
+                psi_get_64bit_sha256_with_seed(ctx->seed[elem[16]], elem, &pointer, 16);
                 pointer /= table_divisor;
                 if (pointer < counter * abs_table_size / ctx->bucket_n &&
                         pointer > (counter + 1) * abs_table_size / ctx->bucket_n)
@@ -208,7 +204,10 @@ static void psi_sh_create_table(PSI_SIMPLE_HASHING_CTX * ctx) {
                         pointer, (uint64_t) (counter * abs_table_size / ctx->bucket_n),
                         (uint64_t) ((counter + 1) * abs_table_size / ctx->bucket_n));
                 pointer %= l_size;
-                lists[pointer] = psi_sh_save_elem_to_list(lists[pointer], elem);
+#pragma omp critical
+                {
+                    lists[pointer] = psi_sh_save_elem_to_list(lists[pointer], elem);
+                }
             }
             read = 0;
             read = psi_sh_read_from_bucket(f, buf);
@@ -220,23 +219,21 @@ static void psi_sh_create_table(PSI_SIMPLE_HASHING_CTX * ctx) {
         psi_sh_save_lists(lists, f_result, l_size);
         psi_sh_clear_lists(lists, l_size);
         free(lists);
+        fclose(f);
     }
     snprintf(remove_buf, 149, "find \"%s\" -size 0 -delete", ctx->path_buckets);
     system(remove_buf);
     printf("PSI Simple Hashing : Done\n");
+    fclose(f_result);
 }
 
 static size_t psi_sh_read_from_bucket(FILE * f, uint8_t buf[]) {
-
     return fread(buf, 17, READ_BUF_SIZE, f);
 }
 
 static GList * psi_sh_save_elem_to_list(GList * l, uint8_t * elem) {
     GList * ret = NULL;
-#pragma omp critical
-    {
-        ret = g_list_append(l, elem);
-    }
+    ret = g_list_append(l, elem);
     return ret;
 }
 
@@ -274,4 +271,8 @@ static void psi_sh_save_elem_to_res(gpointer elem, gpointer f) {
 static GList * psi_sh_add_empty(GList * l) {
     uint8_t * elem = (uint8_t*) calloc(17 * sizeof*elem, 1);
     return g_list_append(l, elem);
+}
+
+static void psi_sh_reduction(PSI_SIMPLE_HASHING_CTX *ctx) {
+    psi_reduce_elems_16_to_10_bytes(ctx->path_result, PSI_Simple_Hashing);
 }

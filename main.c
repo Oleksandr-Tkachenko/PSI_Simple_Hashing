@@ -22,6 +22,7 @@ int main(int argc, char** argv) {
         return (EXIT_FAILURE);
     }
     PSI_SIMPLE_HASHING_CTX ctx[1];
+    ctx->reduction = FALSE;
     parse_argv(argc, argv, ctx);
     psi_simple_hashing(ctx);
     return (EXIT_SUCCESS);
@@ -31,7 +32,7 @@ int parse_argv(int argc, char** argv, PSI_SIMPLE_HASHING_CTX* ctx) {
     int index, c;
     opterr = 0;
     ctx->hash_n = 0;
-    while ((c = getopt(argc, argv, "1:2:3:p:b:q:s:i:t:d:f:z:")) != -1)
+    while ((c = getopt(argc, argv, "1:2:3:p:b:q:s:i:t:d:f:z:r:")) != -1)
         switch (c) {
             case '1':
                 atob(optarg, ctx->seed[ctx->hash_n]);
@@ -71,6 +72,9 @@ int parse_argv(int argc, char** argv, PSI_SIMPLE_HASHING_CTX* ctx) {
                 break;
             case 'z':
                 strncpy(ctx->path_result, optarg, 128);
+                break;
+            case 'r':
+                ctx->reduction = TRUE;
                 break;
             case '?':
                 if (isprint(optopt))
