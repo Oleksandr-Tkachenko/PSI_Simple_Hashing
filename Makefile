@@ -14,10 +14,10 @@ psi_simple_hashing: $(OBJ)
 	$(CC) $(CFLAGS) -c $<
 
 clean: 
-	rm $(OBJ) $(NAME)
+	rm -f $(OBJ) $(NAME)
 
 remove:
-	rm /usr/bin/$(NAME)
+	rm -f /usr/bin/$(NAME)
 
 install: psi_simple_hashing
 	cp $(NAME) /usr/bin/$(NAME) 
