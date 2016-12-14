@@ -1,16 +1,5 @@
 # Private Set Intersection (PSI)
 ###Simple Hashing###
----
-__Install:__
-```
-sudo make install
-```
-__Clean:__ 
-```
-sudo make clean
-```
-##PSI##
-###Simple Hashing###
 
 A memory-efficient implementation of the Simple Hashing algorithm.
 Takes 16-byte elements as input from a file. Writes output to a separate file.
@@ -26,6 +15,15 @@ in the queue buffer according to its hash value. If queue buffer is full it will
 Because of the sorted order of buckets, we now can build simple hashing table 
 using only one bucket at the time, so that it fits in RAM.
 
+---
+__Install:__
+```
+sudo make install
+```
+__Clean:__ 
+```
+sudo make clean
+```
 __Remove:__ 
 ```
 sudo make remove
@@ -39,13 +37,6 @@ sudo make remove
 
 ###Usage:
 ---
-```
-psi-simple-hashing  -1 16-Byte seed 1 -2 16-Byte seed 2  -3 16-Byte seed 3 -p path to data  -s path buckets -b bucket number -q queue buffer size -i read buffer size -t thread number -d table size multiplier -f fixed table size -z path result
-```
-__Remove:__ sudo make remove
-
-__Dependencies:__ libglib2.0-dev, _lpsi-util_, libssl-dev
-
 __Usage:__ 
 `psi-simple-hashing`
 * -1 _16-Byte seed 1_ Hash seed
